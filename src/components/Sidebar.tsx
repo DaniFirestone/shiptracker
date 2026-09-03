@@ -1,4 +1,3 @@
-import { useMemo, useState } from "react";
 import type { LiveShip } from "../sim/useCruiseSimulation";
 import { CRUISE_LINE_NAME, REGIONS, TIMELINE_END_MS, TIMELINE_START_MS, type CruiseRegion } from "../sim/cruiseData";
 import { REGION_COLORS } from "./mapData";
@@ -15,7 +14,8 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 interface SidebarProps {
-  ships: LiveShip[];
+  ships: LiveShip[]; // already filtered by query + activeRegions
+  totalShipCount: number;
   selectedShipId: string | null;
   onSelectShip: (id: string) => void;
   currentMs: number;
@@ -24,10 +24,15 @@ interface SidebarProps {
   onTogglePlaying: () => void;
   timeScale: number;
   onTimeScaleChange: (v: number) => void;
+  query: string;
+  onQueryChange: (q: string) => void;
+  activeRegions: Set<CruiseRegion>;
+  onToggleRegion: (region: CruiseRegion) => void;
 }
 
 export function Sidebar({
   ships,
+  totalShipCount,
   selectedShipId,
   onSelectShip,
   currentMs,
@@ -36,32 +41,16 @@ export function Sidebar({
   onTogglePlaying,
   timeScale,
   onTimeScaleChange,
+  query,
+  onQueryChange,
+  activeRegions,
+  onToggleRegion,
 }: SidebarProps) {
-  const [query, setQuery] = useState("");
-  const [activeRegions, setActiveRegions] = useState<Set<CruiseRegion>>(new Set(REGIONS));
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return ships
-      .filter((s) => activeRegions.has(s.region))
-      .filter((s) => !q || s.name.toLowerCase().includes(q))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [ships, query, activeRegions]);
-
-  function toggleRegion(region: CruiseRegion) {
-    setActiveRegions((prev) => {
-      const next = new Set(prev);
-      if (next.has(region)) next.delete(region);
-      else next.add(region);
-      return next;
-    });
-  }
-
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <h1>ShipTracker</h1>
-        <div className="cruise-line-name">{CRUISE_LINE_NAME} &middot; {ships.length} ships</div>
+        <div className="cruise-line-name">{CRUISE_LINE_NAME} &middot; {totalShipCount} ships</div>
 
         <div className="clock-row">
           <button className="play-btn" onClick={onTogglePlaying} aria-label={playing ? "Pause" : "Play"}>
@@ -98,7 +87,7 @@ export function Sidebar({
         type="text"
         placeholder="Search ships..."
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => onQueryChange(e.target.value)}
       />
 
       <div className="type-filters">
@@ -107,7 +96,7 @@ export function Sidebar({
             key={region}
             className={`type-chip ${activeRegions.has(region) ? "active" : ""}`}
             style={{ borderColor: REGION_COLORS[region] }}
-            onClick={() => toggleRegion(region)}
+            onClick={() => onToggleRegion(region)}
           >
             <span className="dot" style={{ background: REGION_COLORS[region] }} />
             {region}
@@ -115,10 +104,10 @@ export function Sidebar({
         ))}
       </div>
 
-      <div className="ship-count">{filtered.length} ships</div>
+      <div className="ship-count">{ships.length} ships</div>
 
       <ul className="ship-list">
-        {filtered.map((s) => (
+        {ships.map((s) => (
           <li
             key={s.id}
             className={`ship-row ${s.id === selectedShipId ? "selected" : ""}`}

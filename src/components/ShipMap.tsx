@@ -57,16 +57,26 @@ const SELECTED_SOURCE = "selected-ship";
 interface ShipMapProps {
   shipsRef: React.RefObject<LiveShip[]>;
   currentMsRef: React.RefObject<number>;
+  visibleShipIds: Set<string>;
   selectedShipId: string | null;
   onSelectShip: (id: string | null) => void;
   flyToToken: number;
 }
 
-export function ShipMap({ shipsRef, currentMsRef, selectedShipId, onSelectShip, flyToToken }: ShipMapProps) {
+export function ShipMap({
+  shipsRef,
+  currentMsRef,
+  visibleShipIds,
+  selectedShipId,
+  onSelectShip,
+  flyToToken,
+}: ShipMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const selectedIdRef = useRef(selectedShipId);
   selectedIdRef.current = selectedShipId;
+  const visibleIdsRef = useRef(visibleShipIds);
+  visibleIdsRef.current = visibleShipIds;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -98,9 +108,11 @@ export function ShipMap({ shipsRef, currentMsRef, selectedShipId, onSelectShip, 
       );
       map.fitBounds(bounds, { padding: 60, duration: 0 });
 
+      const initialVisibleShips = shipsRef.current.filter((s) => visibleIdsRef.current.has(s.id));
+
       map.addSource(TRAILS_SOURCE, {
         type: "geojson",
-        data: trailsToFeatureCollection(shipsRef.current, currentMsRef.current),
+        data: trailsToFeatureCollection(initialVisibleShips, currentMsRef.current),
       });
       map.addLayer({
         id: "trails-layer",
@@ -164,7 +176,7 @@ export function ShipMap({ shipsRef, currentMsRef, selectedShipId, onSelectShip, 
 
       map.addSource(SHIPS_SOURCE, {
         type: "geojson",
-        data: shipsToFeatureCollection(shipsRef.current),
+        data: shipsToFeatureCollection(initialVisibleShips),
       });
       map.addLayer({
         id: "ships-layer",
@@ -197,7 +209,7 @@ export function ShipMap({ shipsRef, currentMsRef, selectedShipId, onSelectShip, 
 
       let raf = 0;
       const render = () => {
-        const ships = shipsRef.current;
+        const ships = shipsRef.current.filter((s) => visibleIdsRef.current.has(s.id));
         const shipsSrc = map.getSource(SHIPS_SOURCE) as GeoJSONSource | undefined;
         const trailsSrc = map.getSource(TRAILS_SOURCE) as GeoJSONSource | undefined;
         const selectedSrc = map.getSource(SELECTED_SOURCE) as GeoJSONSource | undefined;
