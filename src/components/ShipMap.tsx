@@ -21,7 +21,7 @@ import { registerShipIcons } from "./shipIcons";
 // "shared" chunk are mirrored verbatim into public/ by
 // scripts/sync-maplibre-worker.mjs (run on postinstall) so this plain,
 // unbundled path works identically in dev and production.
-setWorkerUrl("/maplibre-worker/maplibre-gl-worker.mjs");
+setWorkerUrl(`${import.meta.env.BASE_URL}maplibre-worker/maplibre-gl-worker.mjs`);
 
 const BG_COLOR = "#0a0f19";
 

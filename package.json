@@ -7,10 +7,11 @@
     "postinstall": "node scripts/sync-maplibre-worker.mjs",
     "predev": "node scripts/sync-maplibre-worker.mjs",
     "dev": "vite",
-    "prebuild": "node scripts/sync-maplibre-worker.mjs",
+    "prebuild": "node scripts/sync-maplibre-worker.mjs && node scripts/validate-cruise-data.mjs",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "validate-data": "node scripts/validate-cruise-data.mjs"
   },
   "dependencies": {
     "maplibre-gl": "^6.7.0",
