@@ -1,14 +1,27 @@
 import { useMemo, useState } from "react";
-import type { ShipSnapshot } from "../sim/useFleetSimulation";
-import { SHIP_COLORS } from "./mapData";
+import type { LiveShip } from "../sim/useCruiseSimulation";
+import { CRUISE_LINE_NAME, REGIONS, TIMELINE_END_MS, TIMELINE_START_MS, type CruiseRegion } from "../sim/cruiseData";
+import { REGION_COLORS } from "./mapData";
 
-const ALL_TYPES = Object.keys(SHIP_COLORS) as ShipSnapshot["type"][];
+const HOUR_MS = 60 * 60 * 1000;
+
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "UTC",
+});
 
 interface SidebarProps {
-  ships: ShipSnapshot[];
+  ships: LiveShip[];
   selectedShipId: string | null;
   onSelectShip: (id: string) => void;
-  simHour: number;
+  currentMs: number;
+  onSeek: (ms: number) => void;
+  playing: boolean;
+  onTogglePlaying: () => void;
   timeScale: number;
   onTimeScaleChange: (v: number) => void;
 }
@@ -17,47 +30,63 @@ export function Sidebar({
   ships,
   selectedShipId,
   onSelectShip,
-  simHour,
+  currentMs,
+  onSeek,
+  playing,
+  onTogglePlaying,
   timeScale,
   onTimeScaleChange,
 }: SidebarProps) {
   const [query, setQuery] = useState("");
-  const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set(ALL_TYPES));
+  const [activeRegions, setActiveRegions] = useState<Set<CruiseRegion>>(new Set(REGIONS));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return ships
-      .filter((s) => activeTypes.has(s.type))
+      .filter((s) => activeRegions.has(s.region))
       .filter((s) => !q || s.name.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [ships, query, activeTypes]);
+  }, [ships, query, activeRegions]);
 
-  function toggleType(type: string) {
-    setActiveTypes((prev) => {
+  function toggleRegion(region: CruiseRegion) {
+    setActiveRegions((prev) => {
       const next = new Set(prev);
-      if (next.has(type)) next.delete(type);
-      else next.add(type);
+      if (next.has(region)) next.delete(region);
+      else next.add(region);
       return next;
     });
   }
-
-  const simDays = Math.floor(simHour / 24);
-  const simH = Math.floor(simHour % 24);
 
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <h1>ShipTracker</h1>
-        <div className="sim-clock">
-          Sim time: <strong>Day {simDays}, {simH.toString().padStart(2, "0")}:00</strong>
+        <div className="cruise-line-name">{CRUISE_LINE_NAME} &middot; {ships.length} ships</div>
+
+        <div className="clock-row">
+          <button className="play-btn" onClick={onTogglePlaying} aria-label={playing ? "Pause" : "Play"}>
+            {playing ? "⏸" : "▶"}
+          </button>
+          <strong className="clock-date">{dateFormatter.format(currentMs)}</strong>
         </div>
+
+        <input
+          className="timeline-scrubber"
+          type="range"
+          min={TIMELINE_START_MS}
+          max={TIMELINE_END_MS}
+          step={HOUR_MS}
+          value={currentMs}
+          onChange={(e) => onSeek(Number(e.target.value))}
+        />
+
         <label className="speed-control">
-          Speed: {timeScale}x
+          Speed: {(timeScale / 24).toFixed(1)} days/sec
           <input
             type="range"
-            min={1}
-            max={200}
-            step={1}
+            min={2}
+            max={240}
+            step={2}
             value={timeScale}
             onChange={(e) => onTimeScaleChange(Number(e.target.value))}
           />
@@ -73,15 +102,15 @@ export function Sidebar({
       />
 
       <div className="type-filters">
-        {ALL_TYPES.map((type) => (
+        {REGIONS.map((region) => (
           <button
-            key={type}
-            className={`type-chip ${activeTypes.has(type) ? "active" : ""}`}
-            style={{ borderColor: SHIP_COLORS[type] }}
-            onClick={() => toggleType(type)}
+            key={region}
+            className={`type-chip ${activeRegions.has(region) ? "active" : ""}`}
+            style={{ borderColor: REGION_COLORS[region] }}
+            onClick={() => toggleRegion(region)}
           >
-            <span className="dot" style={{ background: SHIP_COLORS[type] }} />
-            {type}
+            <span className="dot" style={{ background: REGION_COLORS[region] }} />
+            {region}
           </button>
         ))}
       </div>
@@ -95,11 +124,12 @@ export function Sidebar({
             className={`ship-row ${s.id === selectedShipId ? "selected" : ""}`}
             onClick={() => onSelectShip(s.id)}
           >
-            <span className="dot" style={{ background: SHIP_COLORS[s.type] }} />
+            <span className="dot" style={{ background: REGION_COLORS[s.region] }} />
             <div className="ship-row-text">
               <div className="ship-row-name">{s.name}</div>
               <div className="ship-row-meta">
-                {s.type} &middot; {s.speedKn.toFixed(1)} kn
+                {s.itineraryName} &middot;{" "}
+                {s.status === "in_port" ? "In Port" : `${s.speedKn.toFixed(1)} kn`}
               </div>
             </div>
           </li>

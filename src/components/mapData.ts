@@ -1,17 +1,18 @@
 import type { FeatureCollection } from "geojson";
-import type { Ship } from "../sim/fleet";
 import { splitAtAntimeridian } from "../sim/geo";
-import { PORTS } from "../sim/ports";
+import { PORTS, type CruiseRegion } from "../sim/cruiseData";
+import { getRecentTrail } from "../sim/cruiseState";
+import type { LiveShip } from "../sim/useCruiseSimulation";
 
-export const SHIP_COLORS: Record<Ship["type"], string> = {
-  Container: "#38bdf8",
-  Tanker: "#fb923c",
-  "Bulk Carrier": "#a3a3a3",
-  "LNG Carrier": "#c084fc",
-  Cargo: "#4ade80",
+export const REGION_COLORS: Record<CruiseRegion, string> = {
+  Caribbean: "#38bdf8",
+  Bahamas: "#fbbf24",
+  Mediterranean: "#c084fc",
 };
 
-export function shipsToFeatureCollection(ships: Ship[]): FeatureCollection {
+const TRAIL_WINDOW_MS = 4 * 24 * 60 * 60 * 1000;
+
+export function shipsToFeatureCollection(ships: LiveShip[]): FeatureCollection {
   return {
     type: "FeatureCollection",
     features: ships.map((s) => ({
@@ -20,29 +21,29 @@ export function shipsToFeatureCollection(ships: Ship[]): FeatureCollection {
       properties: {
         id: s.id,
         name: s.name,
-        type: s.type,
+        region: s.region,
         heading: s.heading,
-        icon: `ship-${s.type}`,
+        icon: `ship-${s.region}`,
       },
     })),
   };
 }
 
-export function trailsToFeatureCollection(ships: Ship[]): FeatureCollection {
+export function trailsToFeatureCollection(ships: LiveShip[], currentMs: number): FeatureCollection {
   return {
     type: "FeatureCollection",
-    features: ships
-      .filter((s) => s.trail.length > 1)
-      .flatMap((s) => {
-        const segments = splitAtAntimeridian(s.trail);
-        return segments
-          .filter((seg) => seg.length > 1)
-          .map((seg) => ({
-            type: "Feature" as const,
-            geometry: { type: "LineString" as const, coordinates: seg },
-            properties: { id: s.id, type: s.type },
-          }));
-      }),
+    features: ships.flatMap((s) => {
+      const trail = getRecentTrail(s, currentMs, TRAIL_WINDOW_MS);
+      if (trail.length < 2) return [];
+      const segments = splitAtAntimeridian(trail);
+      return segments
+        .filter((seg) => seg.length > 1)
+        .map((seg) => ({
+          type: "Feature" as const,
+          geometry: { type: "LineString" as const, coordinates: seg },
+          properties: { id: s.id, region: s.region },
+        }));
+    }),
   };
 }
 

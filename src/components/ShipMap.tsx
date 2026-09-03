@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import {
+  LngLatBounds,
   Map as MlMap,
   NavigationControl,
   setWorkerUrl,
@@ -9,7 +10,8 @@ import {
   type StyleSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { Ship } from "../sim/fleet";
+import { PORTS } from "../sim/cruiseData";
+import type { LiveShip } from "../sim/useCruiseSimulation";
 import { portsToFeatureCollection, shipsToFeatureCollection, trailsToFeatureCollection } from "./mapData";
 import { registerShipIcons } from "./shipIcons";
 
@@ -53,13 +55,14 @@ const PORTS_SOURCE = "ports";
 const SELECTED_SOURCE = "selected-ship";
 
 interface ShipMapProps {
-  shipsRef: React.RefObject<Ship[]>;
+  shipsRef: React.RefObject<LiveShip[]>;
+  currentMsRef: React.RefObject<number>;
   selectedShipId: string | null;
   onSelectShip: (id: string | null) => void;
   flyToToken: number;
 }
 
-export function ShipMap({ shipsRef, selectedShipId, onSelectShip, flyToToken }: ShipMapProps) {
+export function ShipMap({ shipsRef, currentMsRef, selectedShipId, onSelectShip, flyToToken }: ShipMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const selectedIdRef = useRef(selectedShipId);
@@ -71,7 +74,7 @@ export function ShipMap({ shipsRef, selectedShipId, onSelectShip, flyToToken }: 
     const map = new MlMap({
       container: containerRef.current,
       style: buildMapStyle(),
-      center: [20, 20],
+      center: [-40, 30],
       zoom: 2,
       attributionControl: { compact: true },
     });
@@ -88,9 +91,16 @@ export function ShipMap({ shipsRef, selectedShipId, onSelectShip, flyToToken }: 
     map.on("load", () => {
       registerShipIcons(map);
 
+      const firstPort: [number, number] = [PORTS[0].lng, PORTS[0].lat];
+      const bounds = PORTS.reduce(
+        (b, p) => b.extend([p.lng, p.lat]),
+        new LngLatBounds(firstPort, firstPort),
+      );
+      map.fitBounds(bounds, { padding: 60, duration: 0 });
+
       map.addSource(TRAILS_SOURCE, {
         type: "geojson",
-        data: trailsToFeatureCollection(shipsRef.current),
+        data: trailsToFeatureCollection(shipsRef.current, currentMsRef.current),
       });
       map.addLayer({
         id: "trails-layer",
@@ -192,7 +202,7 @@ export function ShipMap({ shipsRef, selectedShipId, onSelectShip, flyToToken }: 
         const trailsSrc = map.getSource(TRAILS_SOURCE) as GeoJSONSource | undefined;
         const selectedSrc = map.getSource(SELECTED_SOURCE) as GeoJSONSource | undefined;
         shipsSrc?.setData(shipsToFeatureCollection(ships));
-        trailsSrc?.setData(trailsToFeatureCollection(ships));
+        trailsSrc?.setData(trailsToFeatureCollection(ships, currentMsRef.current));
 
         const selected = ships.find((s) => s.id === selectedIdRef.current);
         selectedSrc?.setData({

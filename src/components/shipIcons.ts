@@ -1,6 +1,6 @@
 import type { Map as MlMap } from "maplibre-gl";
-import type { Ship } from "../sim/fleet";
-import { SHIP_COLORS } from "./mapData";
+import type { CruiseRegion } from "../sim/cruiseData";
+import { REGION_COLORS } from "./mapData";
 
 /** Draws a simple ship-arrow icon (pointing north/up) in the given color. */
 function drawShipIcon(color: string, size: number): ImageData {
@@ -27,10 +27,10 @@ function drawShipIcon(color: string, size: number): ImageData {
 
 export function registerShipIcons(map: MlMap) {
   const size = 48;
-  (Object.keys(SHIP_COLORS) as Ship["type"][]).forEach((type) => {
-    const id = `ship-${type}`;
+  (Object.keys(REGION_COLORS) as CruiseRegion[]).forEach((region) => {
+    const id = `ship-${region}`;
     if (map.hasImage(id)) return;
-    const img = drawShipIcon(SHIP_COLORS[type], size);
+    const img = drawShipIcon(REGION_COLORS[region], size);
     map.addImage(id, img, { pixelRatio: 2 });
   });
 }

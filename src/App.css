@@ -40,10 +40,46 @@
   letter-spacing: -0.3px;
 }
 
-.sim-clock {
+.cruise-line-name {
   font-size: 12px;
   color: var(--text-dim);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.clock-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.play-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--panel-border);
+  background: #0d1526;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.play-btn:hover {
+  border-color: var(--accent);
+}
+
+.clock-date {
+  font-size: 13px;
+}
+
+.timeline-scrubber {
+  width: 100%;
+  margin: 6px 0 10px;
+  accent-color: var(--accent);
 }
 
 .speed-control {
